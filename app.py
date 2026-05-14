@@ -6,7 +6,16 @@ import re
 from rapidfuzz import fuzz
 
 # =========================================================
-# OCR MODEL
+# PAGE CONFIG
+# =========================================================
+st.set_page_config(
+    page_title="Energy Drink Health Scanner",
+    page_icon="🧾",
+    layout="centered"
+)
+
+# =========================================================
+# LOAD OCR MODEL
 # =========================================================
 @st.cache_resource
 def load_reader():
@@ -15,13 +24,11 @@ def load_reader():
 reader = load_reader()
 
 # =========================================================
-# INGREDIENT / NUTRITION DATABASE
+# HEALTH DATABASE
 # =========================================================
-# Focused on energy drinks like Red Bull
-
 HEALTH_RULES = {
 
-    "sugar": {
+    "Sugar": {
         "aliases": [
             "sugar",
             "glucose",
@@ -31,61 +38,61 @@ HEALTH_RULES = {
             "corn syrup"
         ],
 
-        "risk_level": "HIGH",
+        "risk": "HIGH",
 
-        "harm": [
+        "effects": [
             "Raises blood sugar rapidly",
-            "Can worsen insulin resistance",
-            "Contributes to weight gain",
-            "Increases risk of tooth decay"
+            "Can contribute to obesity",
+            "May worsen insulin resistance",
+            "Can increase risk of tooth decay"
         ],
 
-        "conditions": {
-            "Diabetes": "Can cause dangerous blood sugar spikes",
-            "Obesity": "Adds excess calories with low satiety",
-            "Fatty Liver Disease": "High fructose intake may worsen liver fat accumulation"
+        "diseases": {
+            "Diabetes": "May cause dangerous blood sugar spikes",
+            "Obesity": "Adds excess calories",
+            "Fatty Liver Disease": "High fructose intake may worsen liver fat"
         }
     },
 
-    "caffeine": {
+    "Caffeine": {
         "aliases": [
             "caffeine"
         ],
 
-        "risk_level": "MEDIUM",
+        "risk": "MEDIUM",
 
-        "harm": [
+        "effects": [
             "Can increase heart rate",
-            "May cause anxiety or jitters",
+            "May cause anxiety",
             "Can disrupt sleep",
-            "May increase blood pressure temporarily"
+            "May increase blood pressure"
         ],
 
-        "conditions": {
-            "High Blood Pressure": "May temporarily elevate blood pressure",
-            "Anxiety Disorders": "Can worsen nervousness and panic symptoms",
-            "Heart Conditions": "High stimulant intake may trigger palpitations"
+        "diseases": {
+            "Hypertension": "May temporarily elevate blood pressure",
+            "Anxiety Disorders": "Can worsen anxiety symptoms",
+            "Heart Disease": "High intake may trigger palpitations"
         }
     },
 
-    "taurine": {
+    "Taurine": {
         "aliases": [
             "taurine"
         ],
 
-        "risk_level": "LOW",
+        "risk": "LOW",
 
-        "harm": [
+        "effects": [
             "Usually safe in moderation",
-            "Combined with caffeine may intensify stimulant effects"
+            "Often combined with stimulants"
         ],
 
-        "conditions": {
+        "diseases": {
             "Heart Conditions": "Large stimulant combinations should be monitored"
         }
     },
 
-    "artificial flavoring": {
+    "Artificial Flavoring": {
         "aliases": [
             "artificial flavor",
             "artificial flavours",
@@ -93,33 +100,15 @@ HEALTH_RULES = {
             "artificial flavouring"
         ],
 
-        "risk_level": "LOW",
+        "risk": "LOW",
 
-        "harm": [
+        "effects": [
             "May contain synthetic compounds",
-            "Some individuals report sensitivities"
+            "Some people report sensitivities"
         ],
 
-        "conditions": {
+        "diseases": {
             "Food Sensitivities": "May trigger reactions in sensitive individuals"
-        }
-    },
-
-    "sodium benzoate": {
-        "aliases": [
-            "sodium benzoate",
-            "e211"
-        ],
-
-        "risk_level": "MEDIUM",
-
-        "harm": [
-            "Preservative used in acidic drinks",
-            "Can form benzene in rare conditions with vitamin C"
-        ],
-
-        "conditions": {
-            "Asthma": "Some sensitive individuals report reactions"
         }
     }
 }
@@ -131,10 +120,8 @@ def normalize_text(text):
 
     text = text.lower()
 
-    # Remove weird OCR symbols
     text = re.sub(r'[^a-z0-9,\-\s]', ' ', text)
 
-    # Remove duplicate spaces
     text = re.sub(r'\s+', ' ', text)
 
     return text.strip()
@@ -146,11 +133,11 @@ def fuzzy_contains(text, phrase, threshold=87):
 
     words = text.split()
 
-    phrase_len = len(phrase.split())
+    phrase_length = len(phrase.split())
 
-    for i in range(len(words) - phrase_len + 1):
+    for i in range(len(words) - phrase_length + 1):
 
-        chunk = " ".join(words[i:i + phrase_len])
+        chunk = " ".join(words[i:i + phrase_length])
 
         score = fuzz.ratio(chunk, phrase)
 
@@ -158,29 +145,6 @@ def fuzzy_contains(text, phrase, threshold=87):
             return True
 
     return False
-
-# =========================================================
-# EXTRACT SUGAR GRAMS
-# =========================================================
-def extract_sugar_amount(text):
-
-    # Example:
-    # sugars 27 g
-    # sugar 39g
-
-    patterns = [
-        r'sugars?\s+(\d+)\s*g',
-        r'sugar\s+(\d+)\s*g'
-    ]
-
-    for pattern in patterns:
-
-        match = re.search(pattern, text)
-
-        if match:
-            return int(match.group(1))
-
-    return None
 
 # =========================================================
 # DETECT INGREDIENTS
@@ -197,48 +161,62 @@ def detect_ingredients(text):
 
             pattern = r'\b' + re.escape(alias) + r'\b'
 
-            # Exact match
             if re.search(pattern, text):
                 found = True
                 break
 
-            # OCR fuzzy match
             if fuzzy_contains(text, alias):
                 found = True
                 break
 
         if found:
+
             detected.append({
                 "ingredient": ingredient,
-                "risk": data["risk_level"],
-                "harm": data["harm"],
-                "conditions": data["conditions"]
+                "risk": data["risk"],
+                "effects": data["effects"],
+                "diseases": data["diseases"]
             })
 
     return detected
 
 # =========================================================
-# STREAMLIT UI
+# EXTRACT SUGAR AMOUNT
 # =========================================================
-st.set_page_config(page_title="Energy Drink Health Scanner")
+def extract_sugar(text):
 
+    patterns = [
+        r'sugars?\s+(\d+)\s*g',
+        r'sugar\s+(\d+)\s*g'
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(pattern, text)
+
+        if match:
+            return int(match.group(1))
+
+    return None
+
+# =========================================================
+# UI
+# =========================================================
 st.title("🧾 Energy Drink Health Scanner")
 
 st.write("""
-Upload an ingredient label.
-
-The app will:
-- Extract text using OCR
-- Detect potentially unhealthy ingredients
-- Explain health risks
-- Warn for specific diseases like diabetes or hypertension
+Upload a drink label image to analyze ingredients
+and detect possible health concerns.
 """)
 
 uploaded_file = st.file_uploader(
-    "Upload label image",
+    "Upload an image",
     type=["jpg", "jpeg", "png"]
 )
 
+# =========================================================
+# IMAGE PROCESSING
+# =========================================================
 if uploaded_file:
 
     image = Image.open(uploaded_file)
@@ -247,7 +225,7 @@ if uploaded_file:
 
     img_array = np.array(image)
 
-    with st.spinner("🔍 Scanning label..."):
+    with st.spinner("Scanning label with EasyOCR..."):
 
         results = reader.readtext(img_array, detail=0)
 
@@ -266,38 +244,28 @@ if uploaded_file:
     # =====================================================
     # SUGAR ANALYSIS
     # =====================================================
-    sugar_amount = extract_sugar_amount(normalized_text)
+    sugar = extract_sugar(normalized_text)
 
-    if sugar_amount is not None:
+    if sugar is not None:
 
         st.subheader("🍬 Sugar Analysis")
 
-        if sugar_amount >= 25:
+        if sugar >= 25:
 
-            st.error(
-                f"""
-                High sugar detected: {sugar_amount}g
-                
-                This is considered high for a single serving.
-                """
-            )
+            st.error(f"High sugar detected: {sugar}g")
 
-        elif sugar_amount >= 10:
+        elif sugar >= 10:
 
-            st.warning(
-                f"Moderate sugar detected: {sugar_amount}g"
-            )
+            st.warning(f"Moderate sugar detected: {sugar}g")
 
         else:
 
-            st.success(
-                f"Low sugar detected: {sugar_amount}g"
-            )
+            st.success(f"Low sugar detected: {sugar}g")
 
     # =====================================================
     # INGREDIENT DETECTION
     # =====================================================
-    st.subheader("⚠️ Health Warnings")
+    st.subheader("⚠️ Ingredient Warnings")
 
     detected = detect_ingredients(normalized_text)
 
@@ -305,57 +273,47 @@ if uploaded_file:
 
         for item in detected:
 
-            risk = item["risk"]
+            if item["risk"] == "HIGH":
+                st.error(f"🚨 {item['ingredient']}")
 
-            if risk == "HIGH":
-                st.error(f"🚨 {item['ingredient'].upper()}")
-
-            elif risk == "MEDIUM":
-                st.warning(f"⚠️ {item['ingredient'].upper()}")
+            elif item["risk"] == "MEDIUM":
+                st.warning(f"⚠️ {item['ingredient']}")
 
             else:
-                st.info(f"ℹ️ {item['ingredient'].upper()}")
-
-            st.write(f"### Risk Level: {risk}")
+                st.info(f"ℹ️ {item['ingredient']}")
 
             st.write("### Possible Effects")
 
-            for effect in item["harm"]:
+            for effect in item["effects"]:
                 st.write(f"- {effect}")
 
             st.write("### Disease Warnings")
 
-            for disease, warning in item["conditions"].items():
-                st.write(f"- **{disease}** → {warning}")
+            for disease, info in item["diseases"].items():
+                st.write(f"- **{disease}** → {info}")
 
             st.divider()
 
     else:
+
         st.success("No concerning ingredients detected.")
 
     # =====================================================
-    # OVERALL HEALTH SUMMARY
+    # OVERALL SUMMARY
     # =====================================================
     st.subheader("🩺 Overall Health Summary")
 
-    if sugar_amount and sugar_amount >= 25:
+    if sugar and sugar >= 25:
 
         st.error("""
         This drink may be unhealthy for:
         - People with diabetes
-        - People trying to lose weight
+        - People with obesity
         - People with insulin resistance
-        - Children consuming multiple energy drinks
         """)
 
     st.info("""
-    Occasional consumption is usually acceptable for healthy adults,
-    but frequent intake of sugary energy drinks may increase long-term
-    health risks.
+    Occasional consumption is usually acceptable for
+    healthy adults, but frequent intake of sugary
+    energy drinks may increase health risks.
     """)
-
-    # =====================================================
-    # DEBUG
-    # =====================================================
-    with st.expander("Normalized OCR Text"):
-        st.write(normalized_text)
