@@ -46,11 +46,19 @@ HEALTH_RULES = {
             "Can increase risk of tooth decay"
         ],
 
-        "diseases": {
-            "Diabetes": "May cause dangerous blood sugar spikes",
-            "Obesity": "Adds excess calories",
-            "Fatty Liver Disease": "High fructose intake may worsen liver fat"
-        }
+        "possible_diseases": [
+            "Type 2 Diabetes",
+            "Obesity",
+            "Fatty Liver Disease",
+            "Tooth Decay"
+        ],
+
+        "avoid_groups": [
+            "People with diabetes",
+            "People trying to lose weight",
+            "People with insulin resistance",
+            "Children consuming excessive sugar"
+        ]
     },
 
     "Caffeine": {
@@ -67,11 +75,19 @@ HEALTH_RULES = {
             "May increase blood pressure"
         ],
 
-        "diseases": {
-            "High Blood Pressure": "May temporarily elevate blood pressure",
-            "Anxiety Disorders": "Can worsen anxiety symptoms",
-            "Heart Disease": "High intake may trigger palpitations"
-        }
+        "possible_diseases": [
+            "High Blood Pressure",
+            "Sleep Disorders",
+            "Heart Palpitations",
+            "Anxiety Problems"
+        ],
+
+        "avoid_groups": [
+            "People with heart disease",
+            "People with anxiety disorders",
+            "Pregnant women",
+            "Children sensitive to caffeine"
+        ]
     },
 
     "Taurine": {
@@ -83,12 +99,17 @@ HEALTH_RULES = {
 
         "effects": [
             "Usually safe in moderation",
-            "Often combined with stimulants"
+            "Combined with caffeine may intensify stimulant effects"
         ],
 
-        "diseases": {
-            "Heart Conditions": "Large stimulant combinations should be monitored"
-        }
+        "possible_diseases": [
+            "Possible heart stress when mixed with high caffeine"
+        ],
+
+        "avoid_groups": [
+            "People with heart conditions",
+            "People sensitive to stimulants"
+        ]
     },
 
     "Artificial Flavoring": {
@@ -103,17 +124,23 @@ HEALTH_RULES = {
 
         "effects": [
             "May contain synthetic compounds",
-            "Some individuals report sensitivities"
+            "Some people report sensitivities"
         ],
 
-        "diseases": {
-            "Food Sensitivities": "May trigger reactions in sensitive individuals"
-        }
+        "possible_diseases": [
+            "Possible allergic reactions",
+            "Food sensitivities"
+        ],
+
+        "avoid_groups": [
+            "People with food sensitivities",
+            "People allergic to additives"
+        ]
     }
 }
 
 # =========================================================
-# TEXT CLEANING
+# CLEAN OCR TEXT
 # =========================================================
 def normalize_text(text):
 
@@ -150,13 +177,14 @@ def detect_ingredients(text):
                 "ingredient": ingredient,
                 "risk": data["risk"],
                 "effects": data["effects"],
-                "diseases": data["diseases"]
+                "possible_diseases": data["possible_diseases"],
+                "avoid_groups": data["avoid_groups"]
             })
 
     return detected
 
 # =========================================================
-# EXTRACT SUGAR AMOUNT
+# EXTRACT SUGAR
 # =========================================================
 def extract_sugar(text):
 
@@ -175,13 +203,16 @@ def extract_sugar(text):
     return None
 
 # =========================================================
-# STREAMLIT UI
+# UI
 # =========================================================
 st.title("🧾 Energy Drink Health Scanner")
 
 st.write("""
-Upload an image of an energy drink label to detect
-potentially unhealthy ingredients and health risks.
+Upload an energy drink label to:
+- Detect unhealthy ingredients
+- Learn possible health risks
+- See what diseases excessive intake may contribute to
+- Find out who should avoid the drink
 """)
 
 uploaded_file = st.file_uploader(
@@ -201,7 +232,7 @@ if uploaded_file:
     img_array = np.array(image)
 
     # OCR
-    with st.spinner("🔍 Reading label with EasyOCR..."):
+    with st.spinner("🔍 Scanning label..."):
 
         results = reader.readtext(img_array, detail=0)
 
@@ -210,7 +241,7 @@ if uploaded_file:
         normalized_text = normalize_text(extracted_text)
 
     # =====================================================
-    # EXTRACTED TEXT
+    # OCR TEXT
     # =====================================================
     st.subheader("📄 Extracted Text")
 
@@ -245,9 +276,9 @@ if uploaded_file:
             )
 
     # =====================================================
-    # INGREDIENT DETECTION
+    # INGREDIENT WARNINGS
     # =====================================================
-    st.subheader("⚠️ Ingredient Warnings")
+    st.subheader("⚠️ Ingredient Health Warnings")
 
     detected = detect_ingredients(normalized_text)
 
@@ -255,7 +286,7 @@ if uploaded_file:
 
         for item in detected:
 
-            # Risk color
+            # Risk colors
             if item["risk"] == "HIGH":
                 st.error(f"🚨 {item['ingredient']}")
 
@@ -271,11 +302,17 @@ if uploaded_file:
             for effect in item["effects"]:
                 st.write(f"- {effect}")
 
-            # Disease warnings
-            st.write("### Disease Warnings")
+            # Diseases
+            st.write("### Diseases Excessive Intake May Contribute To")
 
-            for disease, warning in item["diseases"].items():
-                st.write(f"- **{disease}** → {warning}")
+            for disease in item["possible_diseases"]:
+                st.write(f"- {disease}")
+
+            # Who should avoid
+            st.write("### People Who Should Limit or Avoid This")
+
+            for group in item["avoid_groups"]:
+                st.write(f"- {group}")
 
             st.divider()
 
@@ -284,24 +321,37 @@ if uploaded_file:
         st.success("No concerning ingredients detected.")
 
     # =====================================================
-    # OVERALL SUMMARY
+    # OVERALL HEALTH SUMMARY
     # =====================================================
     st.subheader("🩺 Overall Health Summary")
 
     if sugar and sugar >= 25:
 
         st.error("""
-This drink may be unhealthy for:
+This drink contains high sugar and stimulants.
+
+Frequent consumption may increase risk of:
+- Type 2 Diabetes
+- Obesity
+- High Blood Pressure
+- Sleep Problems
+- Heart Issues
+""")
+
+    st.warning("""
+People who should be careful with energy drinks:
 - People with diabetes
-- People with obesity
-- People with insulin resistance
-- People trying to reduce sugar intake
+- People with heart disease
+- Pregnant women
+- Children and teenagers
+- People with anxiety disorders
+- People sensitive to caffeine
 """)
 
     st.info("""
 Occasional consumption is usually acceptable for
-healthy adults, but frequent intake of sugary
-energy drinks may increase long-term health risks.
+healthy adults, but frequent intake may increase
+long-term health risks.
 """)
 
     # =====================================================
