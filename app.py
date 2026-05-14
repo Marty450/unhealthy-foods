@@ -3,7 +3,6 @@ import easyocr
 from PIL import Image
 import numpy as np
 import re
-from rapidfuzz import fuzz
 
 # =========================================================
 # PAGE CONFIG
@@ -69,7 +68,7 @@ HEALTH_RULES = {
         ],
 
         "diseases": {
-            "Hypertension": "May temporarily elevate blood pressure",
+            "High Blood Pressure": "May temporarily elevate blood pressure",
             "Anxiety Disorders": "Can worsen anxiety symptoms",
             "Heart Disease": "High intake may trigger palpitations"
         }
@@ -96,15 +95,15 @@ HEALTH_RULES = {
         "aliases": [
             "artificial flavor",
             "artificial flavours",
-            "artificial flavoring",
-            "artificial flavouring"
+            "artificial flavouring",
+            "artificial flavoring"
         ],
 
         "risk": "LOW",
 
         "effects": [
             "May contain synthetic compounds",
-            "Some people report sensitivities"
+            "Some individuals report sensitivities"
         ],
 
         "diseases": {
@@ -127,26 +126,6 @@ def normalize_text(text):
     return text.strip()
 
 # =========================================================
-# FUZZY OCR MATCH
-# =========================================================
-def fuzzy_contains(text, phrase, threshold=87):
-
-    words = text.split()
-
-    phrase_length = len(phrase.split())
-
-    for i in range(len(words) - phrase_length + 1):
-
-        chunk = " ".join(words[i:i + phrase_length])
-
-        score = fuzz.ratio(chunk, phrase)
-
-        if score >= threshold:
-            return True
-
-    return False
-
-# =========================================================
 # DETECT INGREDIENTS
 # =========================================================
 def detect_ingredients(text):
@@ -162,10 +141,6 @@ def detect_ingredients(text):
             pattern = r'\b' + re.escape(alias) + r'\b'
 
             if re.search(pattern, text):
-                found = True
-                break
-
-            if fuzzy_contains(text, alias):
                 found = True
                 break
 
@@ -200,13 +175,13 @@ def extract_sugar(text):
     return None
 
 # =========================================================
-# UI
+# STREAMLIT UI
 # =========================================================
 st.title("🧾 Energy Drink Health Scanner")
 
 st.write("""
-Upload a drink label image to analyze ingredients
-and detect possible health concerns.
+Upload an image of an energy drink label to detect
+potentially unhealthy ingredients and health risks.
 """)
 
 uploaded_file = st.file_uploader(
@@ -215,7 +190,7 @@ uploaded_file = st.file_uploader(
 )
 
 # =========================================================
-# IMAGE PROCESSING
+# PROCESS IMAGE
 # =========================================================
 if uploaded_file:
 
@@ -225,7 +200,8 @@ if uploaded_file:
 
     img_array = np.array(image)
 
-    with st.spinner("Scanning label with EasyOCR..."):
+    # OCR
+    with st.spinner("🔍 Reading label with EasyOCR..."):
 
         results = reader.readtext(img_array, detail=0)
 
@@ -234,7 +210,7 @@ if uploaded_file:
         normalized_text = normalize_text(extracted_text)
 
     # =====================================================
-    # OCR TEXT
+    # EXTRACTED TEXT
     # =====================================================
     st.subheader("📄 Extracted Text")
 
@@ -252,15 +228,21 @@ if uploaded_file:
 
         if sugar >= 25:
 
-            st.error(f"High sugar detected: {sugar}g")
+            st.error(
+                f"High sugar detected: {sugar}g"
+            )
 
         elif sugar >= 10:
 
-            st.warning(f"Moderate sugar detected: {sugar}g")
+            st.warning(
+                f"Moderate sugar detected: {sugar}g"
+            )
 
         else:
 
-            st.success(f"Low sugar detected: {sugar}g")
+            st.success(
+                f"Low sugar detected: {sugar}g"
+            )
 
     # =====================================================
     # INGREDIENT DETECTION
@@ -273,6 +255,7 @@ if uploaded_file:
 
         for item in detected:
 
+            # Risk color
             if item["risk"] == "HIGH":
                 st.error(f"🚨 {item['ingredient']}")
 
@@ -282,15 +265,17 @@ if uploaded_file:
             else:
                 st.info(f"ℹ️ {item['ingredient']}")
 
+            # Effects
             st.write("### Possible Effects")
 
             for effect in item["effects"]:
                 st.write(f"- {effect}")
 
+            # Disease warnings
             st.write("### Disease Warnings")
 
-            for disease, info in item["diseases"].items():
-                st.write(f"- **{disease}** → {info}")
+            for disease, warning in item["diseases"].items():
+                st.write(f"- **{disease}** → {warning}")
 
             st.divider()
 
@@ -306,14 +291,21 @@ if uploaded_file:
     if sugar and sugar >= 25:
 
         st.error("""
-        This drink may be unhealthy for:
-        - People with diabetes
-        - People with obesity
-        - People with insulin resistance
-        """)
+This drink may be unhealthy for:
+- People with diabetes
+- People with obesity
+- People with insulin resistance
+- People trying to reduce sugar intake
+""")
 
     st.info("""
-    Occasional consumption is usually acceptable for
-    healthy adults, but frequent intake of sugary
-    energy drinks may increase health risks.
-    """)
+Occasional consumption is usually acceptable for
+healthy adults, but frequent intake of sugary
+energy drinks may increase long-term health risks.
+""")
+
+    # =====================================================
+    # DEBUG TEXT
+    # =====================================================
+    with st.expander("Normalized OCR Text"):
+        st.write(normalized_text)
