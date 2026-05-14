@@ -140,6 +140,51 @@ HEALTH_RULES = {
 }
 
 # =========================================================
+# HEALTHY ALTERNATIVES
+# =========================================================
+HEALTHY_ALTERNATIVES = [
+    {
+        "name": "Water",
+        "benefit": "Best for hydration with no sugar or stimulants"
+    },
+
+    {
+        "name": "Sparkling Water",
+        "benefit": "Carbonated alternative without added sugar"
+    },
+
+    {
+        "name": "Green Tea",
+        "benefit": "Contains antioxidants and lower caffeine"
+    },
+
+    {
+        "name": "Black Coffee",
+        "benefit": "Provides energy with little or no sugar"
+    },
+
+    {
+        "name": "Coconut Water",
+        "benefit": "Contains natural electrolytes"
+    },
+
+    {
+        "name": "Low-Sugar Electrolyte Drinks",
+        "benefit": "Hydration with reduced sugar content"
+    },
+
+    {
+        "name": "Fruit-Infused Water",
+        "benefit": "Natural flavor without excessive sugar"
+    },
+
+    {
+        "name": "Herbal Tea",
+        "benefit": "Usually caffeine-free and calming"
+    }
+]
+
+# =========================================================
 # CLEAN OCR TEXT
 # =========================================================
 def normalize_text(text):
@@ -210,9 +255,10 @@ st.title("🧾 Energy Drink Health Scanner")
 st.write("""
 Upload an energy drink label to:
 - Detect unhealthy ingredients
-- Learn possible health risks
-- See what diseases excessive intake may contribute to
+- Learn health risks
+- See diseases excessive intake may contribute to
 - Find out who should avoid the drink
+- Discover healthier alternatives
 """)
 
 uploaded_file = st.file_uploader(
@@ -308,7 +354,7 @@ if uploaded_file:
             for disease in item["possible_diseases"]:
                 st.write(f"- {disease}")
 
-            # Who should avoid
+            # Avoid groups
             st.write("### People Who Should Limit or Avoid This")
 
             for group in item["avoid_groups"]:
@@ -353,6 +399,22 @@ Occasional consumption is usually acceptable for
 healthy adults, but frequent intake may increase
 long-term health risks.
 """)
+
+    # =====================================================
+    # HEALTHY ALTERNATIVES
+    # =====================================================
+    st.subheader("🥗 Healthier Alternatives")
+
+    st.write("""
+Here are some healthier alternatives to sugary
+energy drinks:
+""")
+
+    for item in HEALTHY_ALTERNATIVES:
+
+        st.success(
+            f"✅ {item['name']} — {item['benefit']}"
+        )
 
     # =====================================================
     # DEBUG TEXT
